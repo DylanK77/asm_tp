@@ -2,10 +2,10 @@ section .text
 global _start
 
 _start:
-    cmp rdi, 2
-    jl  _fail
-
-    mov rbx, [rsi+8]
+    mov rax, [rsp]
+    cmp rax, 2
+    jb _fail
+    mov rbx, [rsp+16]
     mov al, [rbx]
     cmp al, '4'
     jne _fail
@@ -13,10 +13,10 @@ _start:
     cmp al, '2'
     jne _fail
     mov al, [rbx+2]
-    cmp al, 0
+    test al, al
     jne _fail
 
-_success:
+_ok:
     mov rax, 60
     xor rdi, rdi
     syscall

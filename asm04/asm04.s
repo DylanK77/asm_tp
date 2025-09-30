@@ -19,13 +19,12 @@ _start:
     lea rsi, [buf + rax - 1]
 .find_digit:
     cmp rsi, buf
-    jb  _odd                ; pas de chiffre trouvé 
+    jb  _bad                ; pas de chiffre trouvé 
     mov al, [rsi]
     cmp al, '0'
     jb  .prev
     cmp al, '9'
     ja  .prev
-
 
     sub al, '0'
     and al, 1
@@ -44,4 +43,9 @@ _even:
 _odd:
     mov rax, 60
     mov rdi, 1
+    syscall
+
+_bad:
+    mov rax, 60
+    mov rdi, 2
     syscall
