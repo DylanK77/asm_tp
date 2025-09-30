@@ -1,3 +1,7 @@
+section .data
+    msg db "1337", 10
+    mlen equ $ - msg
+
 section .text
 global _start
 
@@ -5,6 +9,7 @@ _start:
     mov rax, [rsp]
     cmp rax, 2
     jb _fail
+
     mov rbx, [rsp+16]
     mov al, [rbx]
     cmp al, '4'
@@ -16,7 +21,12 @@ _start:
     test al, al
     jne _fail
 
-_ok:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg
+    mov rdx, mlen
+    syscall
+
     mov rax, 60
     xor rdi, rdi
     syscall
