@@ -1,90 +1,137 @@
+; asm09.s — Convert decimal to hex or binary
+; Usage:
+;   ./asm09 N        -> HEX
+;   ./asm09 -b N     -> BINARY
+
 section .bss
-buf: resb 64
+buf:    resb 128
 
 section .data
-digits: db "0123456789ABCDEF"
-nl: db 10
+nl:     db 10
 
 section .text
 global _start
 
+; atoi: rsi -> string, rax <- value
 atoi:
-    xor rax, rax
-.a:
-    mov bl, [rsi]
-    cmp bl, 0
-    je  .d
-    cmp bl, '0'
-    jb  .d
-    cmp bl, '9'
-    ja  .d
-    imul rax, rax, 10
-    movzx rdx, bl
-    sub rdx, '0'
-    add rax, rdx
-    inc rsi
-    jmp .a
-.d:
+    xor     rax, rax
+.parse:
+    mov     al, [rsi]
+    cmp     al, 0
+    je      .done
+    cmp     al, 10
+    je      .done
+    cmp     al, '0'
+    jb      .done
+    cmp     al, '9'
+    ja      .done
+    imul    rax, rax, 10
+    movzx   rdx, al
+    sub     rdx, '0'
+    add     rax, rdx
+    inc     rsi
+    jmp     .parse
+.done:
     ret
 
-to_base:
-    mov rcx, rbx
-    mov rdi, buf+63
-    mov byte [rdi], 0
-    test rax, rax
-    jnz .loop
-    dec rdi
-    mov byte [rdi], '0'
-    mov rsi, rdi
-    mov rdx, 1
+; itoa_hex: rax -> hex string in buf, OUT: rsi, rcx=len
+itoa_hex:
+    mov     rbx, 16
+    xor     rcx, rcx
+    mov     rdi, buf+127
+    mov     byte [rdi], 0
+    test    rax, rax
+    jnz     .loop
+    dec     rdi
+    mov     byte [rdi], '0'
+    mov     rcx, 1
+    mov     rsi, rdi
     ret
 .loop:
-    xor rdx, rdx
-    div rcx
-    mov bl, [digits+rdx]
-    dec rdi
-    mov [rdi], bl
-    test rax, rax
-    jnz .loop
-    mov rsi, rdi
-    mov rdx, buf+64
-    sub rdx, rdi
-    dec rdx
+    xor     rdx, rdx
+    div     rbx
+    cmp     dl, 9
+    jbe     .digit
+    add     dl, 'A'-10
+    jmp     .store
+.digit:
+    add     dl, '0'
+.store:
+    dec     rdi
+    mov     [rdi], dl
+    inc     rcx
+    test    rax, rax
+    jnz     .loop
+    mov     rsi, rdi
+    ret
+
+; itoa_bin: rax -> binary string in buf, OUT: rsi, rcx=len
+itoa_bin:
+    xor     rcx, rcx
+    mov     rdi, buf+127
+    mov     byte [rdi], 0
+    test    rax, rax
+    jnz     .loop
+    dec     rdi
+    mov     byte [rdi], '0'
+    mov     rcx, 1
+    mov     rsi, rdi
+    ret
+.loop:
+    test    rax, rax
+    jz      .done
+    mov     rdx, rax
+    and     rdx, 1
+    shr     rax, 1
+    add     dl, '0'
+    dec     rdi
+    mov     [rdi], dl
+    inc     rcx
+    jmp     .loop
+.done:
+    mov     rsi, rdi
     ret
 
 _start:
-    mov rax, [rsp]
-    cmp rax, 2
-    jl  .e1
+    mov     rax, [rsp]
+    cmp     rax, 2
+    jl      exit1
 
-    mov rsi, [rsp+16]
-    mov rbx, 16
-    mov al, [rsi]
-    cmp al, '-'
-    jne .normal
-    cmp byte [rsi+1], 'b'
-    jne .normal
-    mov rbx, 2
-    mov rsi, [rsp+24]
-.normal:
-    call atoi
-    call to_base
+    mov     rsi, [rsp+16]
+    mov     al, [rsi]
+    cmp     al, '-'
+    jne     normal_hex
 
-    mov rax, 1
-    mov rdi, 1
+    mov     al, [rsi+1]
+    cmp     al, 'b'
+    jne     exit1
+    cmp     qword [rsp], 3
+    jl      exit1
+    mov     rsi, [rsp+24]
+    call    atoi
+    call    itoa_bin
+    jmp     print
+
+normal_hex:
+    call    atoi
+    call    itoa_hex
+
+print:
+    mov     rax, 1
+    mov     rdi, 1
+    mov     rdx, rcx
+    syscall
+    mov     rax, 1
+    mov     rdi, 1
+    mov     rsi, nl
+    mov     rdx, 1
+    syscall
+exit0:
+    mov     rax, 60
+    xor     rdi, rdi
     syscall
 
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, nl
-    mov rdx, 1
-    syscall
-
-    mov rax, 60
-    xor rdi, rdi
-    syscall
-
-.e1:
-    mov rax, 60
-    mov rdi, 1
+exit1:
+    mov     rax, 60
+    mov     rdi, 1
     syscall
