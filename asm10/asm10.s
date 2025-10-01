@@ -1,11 +1,12 @@
 section .bss
 buf:    resb 64
-nlbuf:  db 10
+
+section .data
+nl:     db 10
 
 section .text
 global _start
 
-; --- atoi signed ---
 atoi:
     xor     rax, rax
     xor     rcx, rcx
@@ -28,9 +29,9 @@ atoi:
     cmp     dl, '9'
     ja      .done
     imul    rax, rax, 10
-    movzx   r8, dl
-    sub     r8, '0'
-    add     rax, r8
+    movzx   rdx, dl
+    sub     rdx, '0'
+    add     rax, rdx
     inc     rsi
     jmp     .loop
 .done:
@@ -40,7 +41,6 @@ atoi:
 .ret:
     ret
 
-; --- itoa signed ---
 itoa:
     mov     r8,  rax
     lea     r9,  [buf+64]
@@ -85,19 +85,19 @@ _start:
 
     mov     rsi, [rsp+16]
     call    atoi
-    mov     r8, rax
+    mov     r12, rax
 
     mov     rsi, [rsp+24]
     call    atoi
-    cmp     rax, r8
-    cmovg   r8, rax
+    cmp     rax, r12
+    cmovg   r12, rax
 
     mov     rsi, [rsp+32]
     call    atoi
-    cmp     rax, r8
-    cmovg   r8, rax
+    cmp     rax, r12
+    cmovg   r12, rax
 
-    mov     rax, r8
+    mov     rax, r12
     call    itoa
 
     mov     rax, 1
@@ -106,7 +106,7 @@ _start:
 
     mov     rax, 1
     mov     rdi, 1
-    lea     rsi, [rel nlbuf]
+    mov     rsi, nl
     mov     rdx, 1
     syscall
 
