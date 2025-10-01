@@ -1,94 +1,120 @@
 section .bss
-buf: resb 32
-
-section .data
-nl:  db 10
+buf:    resb 64
+nlbuf:  db 10
 
 section .text
 global _start
 
+; --- atoi signed ---
 atoi:
-    xor rax, rax
-.a:
-    mov al, [rsi]
-    cmp al, 0
-    je  .d
-    cmp al, '0'
-    jb  .d
-    cmp al, '9'
-    ja  .d
-    imul rax, rax, 10
-    movzx rdx, al
-    sub rdx, '0'
-    add rax, rdx
-    inc rsi
-    jmp .a
-.d:
+    xor     rax, rax
+    xor     rcx, rcx
+    mov     dl, [rsi]
+    cmp     dl, '-'
+    jne     .chk_plus
+    inc     rsi
+    mov     cl, 1
+    jmp     .loop
+.chk_plus:
+    cmp     dl, '+'
+    jne     .loop
+    inc     rsi
+.loop:
+    mov     dl, [rsi]
+    cmp     dl, 0
+    je      .done
+    cmp     dl, '0'
+    jb      .done
+    cmp     dl, '9'
+    ja      .done
+    imul    rax, rax, 10
+    movzx   r8, dl
+    sub     r8, '0'
+    add     rax, r8
+    inc     rsi
+    jmp     .loop
+.done:
+    test    rcx, rcx
+    jz      .ret
+    neg     rax
+.ret:
     ret
 
+; --- itoa signed ---
 itoa:
-    mov rdi, buf+31
-    mov byte [rdi], 0
-    test rax, rax
-    jnz .l
-    dec rdi
-    mov byte [rdi], '0'
-    mov rsi, rdi
-    mov rdx, 1
-    ret
-.l:
-    mov rcx, 10
-    mov rbx, rdi
-.loop:
-    xor rdx, rdx
-    div rcx
-    add dl, '0'
-    dec rdi
-    mov [rdi], dl
-    test rax, rax
-    jnz .loop
-    mov rsi, rdi
-    mov rdx, rbx
-    sub rdx, rdi
+    mov     r8,  rax
+    lea     r9,  [buf+64]
+    mov     r10, r9
+    xor     r11d, r11d
+    test    r8, r8
+    jge     .pos
+    neg     r8
+    mov     r11d, 1
+.pos:
+    test    r8, r8
+    jnz     .conv
+    dec     r9
+    mov     byte [r9], '0'
+    jmp     .maybe_sign
+.conv:
+    mov     rax, r8
+.next:
+    xor     rdx, rdx
+    mov     rcx, 10
+    div     rcx
+    add     dl, '0'
+    dec     r9
+    mov     [r9], dl
+    test    rax, rax
+    jnz     .next
+.maybe_sign:
+    test    r11d, r11d
+    jz      .done
+    dec     r9
+    mov     byte [r9], '-'
+.done:
+    mov     rsi, r9
+    mov     rdx, r10
+    sub     rdx, r9
     ret
 
 _start:
-    mov rax, [rsp]
-    cmp rax, 4
-    jl  .e1
+    mov     rax, [rsp]
+    cmp     rax, 4
+    jl      .e1
 
-    mov rsi, [rsp+16]
-    call atoi
-    mov r8, rax
+    mov     rsi, [rsp+16]
+    call    atoi
+    mov     r8, rax
 
-    mov rsi, [rsp+24]
-    call atoi
-    cmp rax, r8
-    cmovg r8, rax
+    mov     rsi, [rsp+24]
+    call    atoi
+    cmp     rax, r8
+    cmovg   r8, rax
 
-    mov rsi, [rsp+32]
-    call atoi
-    cmp rax, r8
-    cmovg r8, rax
+    mov     rsi, [rsp+32]
+    call    atoi
+    cmp     rax, r8
+    cmovg   r8, rax
 
-    mov rax, r8
-    call itoa
+    mov     rax, r8
+    call    itoa
 
-    mov rax, 1
-    mov rdi, 1
+    mov     rax, 1
+    mov     rdi, 1
     syscall
 
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, nl
-    mov rdx, 1
+    mov     rax, 1
+    mov     rdi, 1
+    lea     rsi, [rel nlbuf]
+    mov     rdx, 1
     syscall
 
-    mov rax, 60
-    xor rdi, rdi
+    mov     rax, 60
+    xor     rdi, rdi
     syscall
 
 .e1:
-    mov rax, 60
-    mov rdi, 1
+    mov     rax, 60
+    mov     rdi, 1
     syscall
