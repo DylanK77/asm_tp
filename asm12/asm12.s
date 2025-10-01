@@ -12,26 +12,25 @@ _start:
     mov     rdi, 0
     mov     rsi, buf
     mov     rdx, 1024
-    syscall
+    syscall                    
 
-    mov     rcx, rax
-    dec     rcx
-    mov     rbx, buf
-    add     rbx, rcx
-    mov     rdx, rcx
+    mov     r8, rax
+    test    r8, r8
+    jz      .done
+    dec     r8 
+
 .rev:
-    mov     al, [rbx]
-    cmp     al, 10
-    je      .skip
-    mov     rsi, rsp
+    cmp     byte [buf+r8], 10
+    je      .next
+
     mov     rax, 1
     mov     rdi, 1
-    mov     rsi, rbx
+    lea     rsi, [buf+r8]
     mov     rdx, 1
     syscall
-.skip:
-    dec     rbx
-    dec     rcx
+
+.next:
+    dec     r8
     jns     .rev
 
     mov     rax, 1
@@ -40,6 +39,7 @@ _start:
     mov     rdx, 1
     syscall
 
+.done:
     mov     rax, 60
     xor     rdi, rdi
     syscall
