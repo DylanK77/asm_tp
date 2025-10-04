@@ -1,89 +1,121 @@
-; asm17.s — Caesar cipher
-; Usage: echo "hello" | ./asm17 3
-
 section .bss
 buf:    resb 4096
 
 section .text
 global _start
 
-; atoi simple
 atoi:
     xor     rax, rax
+    xor     rcx, rcx
+    mov     dl, [rsi]
+    cmp     dl, '-'
+    jne     .chk_plus
+    inc     rsi
+    mov     cl, 1
+    jmp     .loop
+.chk_plus:
+    cmp     dl, '+'
+    jne     .loop
+    inc     rsi
 .loop:
-    mov     bl, [rsi]
-    cmp     bl, 0
+    mov     dl, [rsi]
+    cmp     dl, 0
     je      .done
-    cmp     bl, 10
+    cmp     dl, 10
     je      .done
-    cmp     bl, '0'
+    cmp     dl, '0'
     jb      .done
-    cmp     bl, '9'
+    cmp     dl, '9'
     ja      .done
     imul    rax, rax, 10
-    sub     bl, '0'
-    add     rax, rbx
+    movzx   r8, dl
+    sub     r8, '0'
+    add     rax, r8
     inc     rsi
     jmp     .loop
 .done:
+    test    rcx, rcx
+    jz      .ret
+    neg     rax
+.ret:
     ret
 
 _start:
-    mov     rax, [rsp]      ; argc
+    mov     rax, [rsp]
     cmp     rax, 2
-    jl      exit1
-
-    mov     rsi, [rsp+16]   ; argv[1] = shift
+    jb      .shift_zero
+    mov     rsi, [rsp+16]
     call    atoi
-    mov     r12, rax        ; shift value
+    mov     r12d, eax
+    jmp     .norm
+.shift_zero:
+    xor     r12d, r12d
+
+.norm:
+    mov     eax, r12d
+    cdq
+    mov     ebx, 26
+    idiv    ebx
+    mov     r12d, edx
+    test    r12d, r12d
+    jge     .okrem
+    add     r12d, 26
+.okrem:
 
     mov     rax, 0
-    mov     rdi, 0
+    xor     rdi, rdi
     mov     rsi, buf
     mov     rdx, 4096
     syscall
-    mov     r13, rax        ; nbytes
+    mov     r13, rax
 
     xor     rcx, rcx
-.enc_loop:
+.loop:
     cmp     rcx, r13
-    jae     .done_enc
+    jae     .out
 
-    mov     al, [buf+rcx]
-    cmp     al, 10
+    movzx   edx, byte [buf+rcx]
+    cmp     dl, 10
     je      .store
 
-    ; lowercase only a-z
-    cmp     al, 'a'
-    jb      .store
-    cmp     al, 'z'
+    cmp     dl, 'a'
+    jb      .upper
+    cmp     dl, 'z'
     ja      .store
+    sub     edx, 'a'
+    add     edx, r12d
+    cmp     edx, 26
+    jb      .low_ok
+    sub     edx, 26
+.low_ok:
+    add     edx, 'a'
+    jmp     .store
 
-    sub     al, 'a'
-    add     al, r12b
-    mov     bl, 26
-    div     bl              ; al=quotient, ah=remainder
-    mov     al, ah
-    add     al, 'a'
+.upper:
+    cmp     dl, 'A'
+    jb      .store
+    cmp     dl, 'Z'
+    ja      .store
+    sub     edx, 'A'
+    add     edx, r12d
+    cmp     edx, 26
+    jb      .up_ok
+    sub     edx, 26
+.up_ok:
+    add     edx, 'A'
 
 .store:
-    mov     [buf+rcx], al
+    mov     byte [buf+rcx], dl
     inc     rcx
-    jmp     .enc_loop
+    jmp     .loop
 
-.done_enc:
+.out:
     mov     rax, 1
     mov     rdi, 1
     mov     rsi, buf
     mov     rdx, r13
     syscall
 
-exit0:
     mov     rax, 60
     xor     rdi, rdi
-    syscall
-
-exit1:
-    mov     rax, 60
-    mov     rdi, 1
     syscall
